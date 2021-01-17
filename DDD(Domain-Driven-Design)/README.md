@@ -143,31 +143,6 @@ Domain(entity) -> Infrastructure(DB, rule Engine, messaging)
             * 불변 밸류 객체의 값을 변경하려면, 새로운 객체를 할당해서 변경해야 한다. 
             * 밸류 타입의 내부 상태를 변경하려면 애그리거트 루트를 통해서만 가능하다. -> 애그리거트 전체의 일관성을 올바르게 유지할 수 있음! 
     
-##### 트랜잭션 범위 
-* 트랜잭션 범위는 작을 수록 좋다. 
-    * DB 기준으로 한 트랜잭션이 한 개의 테이블을 수정하는 것과 세개의 테이블 수정하는 것은 성능에서 차이 발생
-    * 한 트랜잭션에 두개 이상의 애그리거트를 수정하면 트랜잭션 충돌이 발생할 가능성이 높으며, 개수가 많아질 수록 처리량도 떨이지게 된다.
-* 한 애그리거트에서 다른 애그리거트의 상태를 변경 하는 것은 애그리거트 간의 의존 결합도를 높여 결과적으로 애그리거트의 변경을 어렵게 만든다.
-    
-##### ID를 이용한 애그리거트 참조
-필드를 이용해 다른 애그리거트를 직접 참조하는 것은 개발자의 구현의 편리함을 제공한다. 
-하지만, `편한 탐색 오용`, `성능에 대한 고민`, `확장의 어려움` 문제를 야기 시킨다.
--> 이 세가지 문제를 완화 할 때 `ID를 이용해서 다른 애그리거트를 참조` 하는 것인다.
-
-##### ID를 이용한 참조와 조회 성능
-ID를 이용한 애그리거트 참조는 지연 로딩과 같은 효과를 만드는데 지연 로딩과 관련된 대표적인 문제가 `N + 1 조회 문제` 이다.
-> N + 1 조회 문제
->
-> 조회 대상이 N 개 일 때 N개를 읽어오는 한번의 쿼리와 연관된 데이터를 읽어오는 쿼리를 N번 실행 하는 것을 말한다.
-> 이는 더 많은 쿼리를 실행해서 전체 조회 속도가 느려지는 원인이 된다.
-> 
-> 해결 방법은 조인을 사용 한다. 
-> - ID 참조 방식 -> 객체 참조 방식 변경 하고 즉시로딩을 사용하도록 매핑 설정을 바꾸는 것.
-> - ID 참조 방식을 사용하면서 N+1 조회 문제를 발생하지 않도록 하기 위해서는? 세타 조인을 이용해서 전용 조회 쿼리를 사용한다.
-
-* JPA에서 조회 전용 쿼리를 실행
-* CQRS
-    
 #### 레파지토리 (Repository)
 * 도메인 객체를 지속적으로 사용하려면 RDBMS, NoSQL, 로컬 파일과 같은 물리적인 저장소에 도메인 객체를 보관해야 한다. (이를 위한 도메인 모델 = 레파지토리)
 * 애그리거트 단위로 도메인 객체를 저장하고 조회하는 기능을 정의한다.
@@ -176,8 +151,6 @@ ID를 이용한 애그리거트 참조는 지연 로딩과 같은 효과를 만�
     * ex) Order 애그리거트는 OrderLine, Orderer 등 모든 구성 요소 포함 해야 함.
 
 * repository interface 는 도메인 모델 영역에 속하며, 실제 구현 클래스는 infrastructure 영역에 속한다.
-
-
 
 * 어떤 기술을 이용해서 레파지로티를 구현하느냐에 따라 애그리거트의 구현도 영향을 받는다.
     * ex) ORM 기술 중 JPA/Hibernate 를 사용하게 되면, 데이터 베이스 관계형 모델에 객체 도메인 모델을 맞춰야하는 경우가 있다.
@@ -206,3 +179,97 @@ com.hyeon.order.domain.service: 도메인 서비스 위치
 com.hyeon.catalog.application.product
 com.hyeon.catalog.application.category
 ```
+
+## 3. 애그리거트
+
+### 트랜잭션 범위 
+* 트랜잭션 범위는 작을 수록 좋다. 
+    * DB 기준으로 한 트랜잭션이 한 개의 테이블을 수정하는 것과 세개의 테이블 수정하는 것은 성능에서 차이 발생
+    * 한 트랜잭션에 두개 이상의 애그리거트를 수정하면 트랜잭션 충돌이 발생할 가능성이 높으며, 개수가 많아질 수록 처리량도 떨이지게 된다.
+* 한 애그리거트에서 다른 애그리거트의 상태를 변경 하는 것은 애그리거트 간의 의존 결합도를 높여 결과적으로 애그리거트의 변경을 어렵게 만든다.
+    
+### ID를 이용한 애그리거트 참조
+필드를 이용해 다른 애그리거트를 직접 참조하는 것은 개발자의 구현의 편리함을 제공한다.
+하지만, `편한 탐색 오용`, `성능에 대한 고민`, `확장의 어려움` 문제를 야기 시킨다.
+**ID를 이용해서 다른 애그리거트를 참조 하는 방법은 세가지 문제를 완화** 시킨다.
+
+### ID를 이용한 참조와 조회 성능
+ID를 이용한 애그리거트 참조는 지연 로딩과 같은 효과를 만드는데 지연 로딩과 관련된 대표적인 문제가 `N + 1 조회 문제` 이다.
+> N + 1 조회 문제
+>
+> 조회 대상이 N 개 일 때 N개를 읽어오는 한번의 쿼리와 연관된 데이터를 읽어오는 쿼리를 N번 실행 하는 것을 말한다.
+> 이는 더 많은 쿼리를 실행해서 전체 조회 속도가 느려지는 원인이 된다.
+> 
+> 해결 방법은 조인을 사용 한다. 
+> - ID 참조 방식 -> 객체 참조 방식 변경 하고 즉시로딩을 사용하도록 매핑 설정을 바꾸는 것.
+> - ID 참조 방식을 사용하면서 N+1 조회 문제를 발생하지 않도록 하기 위해서는? 세타 조인을 이용해서 전용 조회 쿼리를 사용한다.
+
+* JPA에서 조회 전용 쿼리를 실행
+* CQRS
+    
+### 애그리거트 간 집합 연관 
+
+JPA 이용한 매핑 설정으로 ID 참조로 이용한 M:N 단방향 연관 구현 가능.
+```java
+@Entity
+@Table(name = "product")
+public class Product {
+    @EmbeddedId
+    private ProductId id;
+    
+    @ElementCollection
+    @CollectionTable(name = "product_category",
+                joinColumns = @JoingColumn(name = "product_id"))
+    private Set<CategoryId> categoryIds;
+    ...
+}
+```
+
+### 애그리거트를 팩토리로 사용하기
+애그리거트를 팩토리로 사용하면 도메인의 응집도를 높일 수 있다.
+
+예시) 
+Product 생성 가능한지 판단하는 코드와 Product를 생성하는 코드가 분리 되어 있다.
+```java
+public class RegisterProductService {
+    public ProductId registerNewProduct(NewProductRequest req) {
+        Store account = accountRepository.findStoreById(req.getStoreId());
+        // 
+        checkNull(account);
+        if(account.isBlocked()) {
+            throw new StoreBlockedException();
+        }
+        ProductId id = productRepository.nextId();
+        Product product = new Product(id, account.getId, ...);
+        productRepository.save(product);
+        return id;
+    }
+    ...
+}
+```
+
+위 코드는 중요한 도메인 로직 처리가 응용 서비스에 노출되었다.
+어떻게 수정할 수 있을까?
+
+`Product의 경우 제품을 생성한 Store의 식별자를 필요로 한다.`
+
+이 힌트로 보았을 때, 도메인 기능을 넣기 위한 별도의 도메인 서비스나 팩토리 클래스를 만들 수도 있지만 
+이 기능을 구현하기에 더 좋은 곳은 Store 애그리거트다.
+**즉. Store의 데이터를 이용해서 Product를 생성한다.**
+
+그렇기 때문에 Store에 Product를 생성하는 팩토리 메서드를 추가하면 Product를 생성할 때 필요한 데이터 일부를 직접 제공하면서
+동시에 중요한 도메인 로직을 함께 구현할 수 있게 된다.
+```java
+public class Store extends Memeber {
+
+    /* Product 애그리거트를 생성하는 팩토리 역할을 한다. */
+    public Product createProduct(ProductId newProductId, ...) {
+        if(isBlocked()) {
+            throw new StoreBlockedException();   
+        }
+        return new Product(newProductId, getId(), ...);
+    }
+}
+```
+
+> ✅ 애그리거트가 갖고 있는 데이터를 이용해서 다른 애그리거트를 생성해야 한다면, 애그리거트에 팩토리 메서드를 구현하는 것을 고려해 볼 것!
