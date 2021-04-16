@@ -273,3 +273,6 @@ public class Store extends Memeber {
 ```
 
 > ✅ 애그리거트가 갖고 있는 데이터를 이용해서 다른 애그리거트를 생성해야 한다면, 애그리거트에 팩토리 메서드를 구현하는 것을 고려해 볼 것!
+
+# Reference
+* [DDD start! 도메인 주도 설계 구현과 핵심 개념 익히기](http://www.yes24.com/Product/Goods/27750871)
